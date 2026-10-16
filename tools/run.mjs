@@ -1,21 +1,18 @@
 // Cross-workspace test orchestrator for the Angular versions course.
 // Usage: node tools/run.mjs test <ng14|ng16|ng18|ng20|ng22|all> [--strict] [--dry-run]
-// Each workspace needs a specific Node major: switch via `nvm use <node>`,
-// run `npm test` there, then always restore Node 24 (try/finally + exit hook).
-// Node built-ins only; commands go through the shell so nvm.cmd/npm.cmd resolve.
-//
-// Note: nvm-windows 1.1.9 cannot be trusted for success detection — `nvm use`
-// exits 0 even for uninstalled versions and can print bogus errors. Success is
-// therefore verified by STATE via `nvm current` (read-only introspection).
+// Each workspace needs a specific Node major. Instead of `nvm use` (unreliable
+// on Windows and a global mutation), the required version's node.exe is
+// resolved under %APPDATA%\nvm\v<major>.* and npm is run through it directly —
+// the global Node version never changes.
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, readdirSync } from "node:fs";
+import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const nvmRoot = process.env.APPDATA ? join(process.env.APPDATA, "nvm") : null;
 
 const NODE_FOR = { ng14: 16, ng16: 18, ng18: 20, ng20: 22, ng22: 24 };
-const RESTORE_NODE = 24;
 // ng14-ng18 (node 16-20) use the old karma runner: needs ChromeHeadless.
 const HEADLESS_MODULES = new Set(["ng14", "ng16", "ng18"]);
 const USAGE =
@@ -41,26 +38,45 @@ function parseArgs(argv) {
   return { target, strict: flags.has("--strict"), dryRun: flags.has("--dry-run") };
 }
 
-// Run one command synchronously; capture=quiet (for checks), else inherit stdio.
-function runShell(command, { cwd, capture = false } = {}) {
-  const res = spawnSync(command, {
-    shell: true,
-    cwd,
-    encoding: "utf8",
-    stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
-  });
-  if (res.error) return { ok: false, reason: res.error.message, out: "" };
-  const out = `${(res.stdout || "").trim()}\n${(res.stderr || "").trim()}`.trim();
-  if (res.signal) return { ok: false, reason: `killed by ${res.signal}`, out };
-  return { ok: res.status === 0, reason: `exit code ${res.status}`, out };
+function versionParts(name) {
+  return name.replace(/^v/, "").split(".").map((p) => parseInt(p, 10) || 0);
 }
 
-// Ground truth for the active Node major: `nvm current` (e.g. "v24.20.0").
-function nvmCurrent() {
-  const r = runShell("nvm current", { capture: true });
-  const raw = r.out.replace(/\s+/g, " ").trim() || r.reason;
-  const m = raw.match(/v?(\d+)\./);
-  return { major: m ? Number(m[1]) : null, raw };
+function compareVersionsDesc(a, b) {
+  const pa = versionParts(a);
+  const pb = versionParts(b);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pb[i] || 0) - (pa[i] || 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+// Highest v<major>.* directory under the nvm root (e.g. major 18 -> v18.20.8).
+function resolveNodeDir(major) {
+  if (!nvmRoot || !existsSync(nvmRoot)) return null;
+  const re = new RegExp(`^v${major}\\.\\d+`);
+  const names = readdirSync(nvmRoot, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && re.test(e.name))
+    .map((e) => e.name)
+    .sort(compareVersionsDesc);
+  return names.length ? join(nvmRoot, names[0]) : null;
+}
+
+// Direct invocation of a specific node.exe — never touches global state.
+function runNode(exe, args, { cwd } = {}) {
+  const res = spawnSync(exe, args, { cwd, encoding: "utf8" });
+  return {
+    ok: !res.error && !res.signal && res.status === 0,
+    status: res.status,
+    reason: res.error
+      ? res.error.message
+      : res.signal
+        ? `killed by ${res.signal}`
+        : `exit code ${res.status}`,
+    stdout: res.stdout || "",
+    stderr: res.stderr || "",
+  };
 }
 
 function plan(command, cwd) {
@@ -77,101 +93,89 @@ if (args.error) {
 const { target, strict, dryRun } = args;
 const modules = target === "all" ? Object.keys(NODE_FOR) : [target];
 
-// Global nvm state: set when we switch away from 24, cleared by restore.
-let needsRestore = false;
-let restoreFailed = false;
-
-function restoreNode() {
-  if (dryRun || !needsRestore) return;
-  needsRestore = false; // clear first so the exit hook cannot recurse
-  console.log(`[restore] nvm use ${RESTORE_NODE}`);
-  runShell(`nvm use ${RESTORE_NODE}`, { capture: true });
-  const cur = nvmCurrent();
-  if (cur.major === RESTORE_NODE) {
-    console.log(`[restore] active node ${cur.raw}`);
-    return;
-  }
-  restoreFailed = true;
-  console.error(
-    `error: restore failed — nvm current is ${cur.raw}, expected node ${RESTORE_NODE}.\n` +
-      `run manually: nvm use ${RESTORE_NODE}`
-  );
-}
-
-process.on("exit", restoreNode);
-for (const sig of ["SIGINT", "SIGTERM"]) {
-  process.on(sig, () => {
-    restoreNode();
-    process.exit(130);
-  });
-}
-
-// Switch to the module's Node major; returns active version string or null.
-function switchTo(module, node) {
-  const use = runShell(`nvm use ${node}`, { capture: true });
-  const cur = nvmCurrent();
-  if (cur.major === node) return cur.raw;
-  if (use.out) console.error(use.out);
-  console.error(
-    `${module}: failed to switch to node ${node} — nvm current: ${cur.raw}` +
-      (cur.major === null ? "" : ` (is node ${node} installed? Try: nvm install ${node})`)
-  );
-  if (!use.ok && !use.out) console.error(`nvm use ${node}: ${use.reason}`);
-  return null;
-}
-
 function testModule(module) {
-  const node = NODE_FOR[module];
+  const major = NODE_FOR[module];
   const cwd = join(root, module);
-  const testCmd =
-    "npm test -- --watch=false" +
-    (HEADLESS_MODULES.has(module) ? " --browsers=ChromeHeadless" : "");
+  const testArgs = ["test", "--", "--watch=false"];
+  if (HEADLESS_MODULES.has(module)) testArgs.push("--browsers=ChromeHeadless");
 
-  console.log(`\n=== ${module} (node ${node}) ===`);
+  console.log(`\n=== ${module} (node ${major}) ===`);
+
+  const dir = resolveNodeDir(major);
+  const dirName = dir ? basename(dir) : null;
+
+  if (!dir) {
+    const where = nvmRoot || "(APPDATA not set)";
+    const msg = `no node ${major} install under ${where} — run: nvm install ${major}`;
+    if (dryRun) {
+      console.log(`[dry-run] ${module}: would fail — ${msg}`);
+      return { ok: true, dirName };
+    }
+    console.error(`${module}: ${msg}`);
+    return { ok: false, dirName };
+  }
+
+  const exe = join(dir, "node.exe");
+  const npmCli = join(dir, "node_modules", "npm", "bin", "npm-cli.js");
+  const cmdLine = `${exe} ${npmCli} ${testArgs.join(" ")}`;
 
   if (dryRun) {
-    plan(`nvm use ${node}`);
-    plan(testCmd, cwd);
-    plan(`nvm use ${RESTORE_NODE}`);
-    return true;
+    plan(`${exe} -v`);
+    plan(cmdLine, cwd);
+    return { ok: true, dirName };
   }
 
-  needsRestore = true;
-  const active = switchTo(module, node);
-  if (!active) {
-    restoreNode();
-    return false;
+  if (!existsSync(exe)) {
+    console.error(`${module}: node.exe not found at ${exe} — reinstall with: nvm install ${major}`);
+    return { ok: false, dirName };
   }
-  console.log(`${module}: active node ${active}`);
 
-  const t = runShell(testCmd, { cwd });
-  restoreNode();
-  if (!t.ok) {
-    const why = existsSync(cwd) ? t.reason : `workspace missing: ${cwd}`;
-    console.error(`${module}: tests failed (${why})`);
+  // Verify the resolved binary really is the required major.
+  const v = runNode(exe, ["-v"]);
+  const reported = v.stdout.trim();
+  if (!new RegExp(`^v${major}\\.`).test(reported)) {
+    console.error(`${module}: ${exe} -v → ${reported || v.reason} — expected v${major}.x`);
+    return { ok: false, dirName };
   }
-  return t.ok;
+  console.log(`${module}: ${exe} -v → ${reported}`);
+
+  if (!existsSync(npmCli)) {
+    console.error(`${module}: npm not found at ${npmCli}`);
+    return { ok: false, dirName };
+  }
+  if (!existsSync(cwd)) {
+    console.error(`${module}: workspace missing: ${cwd}`);
+    return { ok: false, dirName };
+  }
+
+  console.log(`[run] ${cmdLine}`);
+  const t = runNode(exe, [npmCli, ...testArgs], { cwd });
+  if (t.stdout) process.stdout.write(t.stdout);
+  if (t.stderr) process.stderr.write(t.stderr);
+  if (!t.ok) console.error(`${module}: tests failed (${t.reason})`);
+  return { ok: t.ok, dirName };
 }
 
 const results = {};
 let failed = false;
-try {
-  for (const module of modules) {
-    const ok = testModule(module);
-    results[module] = ok;
-    if (!ok) {
-      failed = true;
-      if (strict) break;
-    }
+for (const module of modules) {
+  const r = testModule(module);
+  results[module] = r;
+  if (!r.ok) {
+    failed = true;
+    if (strict) break;
   }
-} finally {
-  restoreNode();
 }
 
 const summary = modules
-  .map((m) => `${m}=${m in results ? (results[m] ? "pass" : "fail") : "skipped"}`)
+  .map((m) => `${m}=${m in results ? (results[m].ok ? "pass" : "fail") : "skipped"}`)
   .join(" ");
 console.log(`\nsummary: ${summary}`);
+for (const m of modules) {
+  if (m in results && results[m].dirName) {
+    console.log(`${m}: node: ${results[m].dirName} (no global switch)`);
+  }
+}
 if (dryRun) console.log("dry-run: no commands executed");
 
-process.exitCode = failed || restoreFailed ? 1 : 0;
+process.exitCode = failed ? 1 : 0;
