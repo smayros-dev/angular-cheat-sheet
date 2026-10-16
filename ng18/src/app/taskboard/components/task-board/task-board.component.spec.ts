@@ -54,11 +54,14 @@ describe('TaskBoardComponent', () => {
     fresh.detectChanges();
     const element: HTMLElement = fresh.nativeElement;
 
-    await new Promise<void>(resolve => setTimeout(resolve, 150));
-    fresh.detectChanges();
+    const deadline = Date.now() + 2000;
+    while (Date.now() < deadline && !element.querySelector('nav.admin-nav')) {
+      await new Promise<void>(resolve => setTimeout(resolve, 25));
+      fresh.detectChanges();
+    }
 
+    expect(element.querySelector('nav.admin-nav')).toBeTruthy();
     expect(element.querySelector('.admin-nav-placeholder')).toBeNull();
-    const nav = element.querySelector('nav.admin-nav a');
-    expect(nav?.textContent).toContain('Admin');
+    expect(element.querySelector('nav.admin-nav a')?.textContent).toContain('Admin');
   });
 });
