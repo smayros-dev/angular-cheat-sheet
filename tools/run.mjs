@@ -63,9 +63,17 @@ function resolveNodeDir(major) {
   return names.length ? join(nvmRoot, names[0]) : null;
 }
 
+// 16 MiB for buffered spawns — well above the 1 MiB default that can SIGTERM
+// a verbose run (ENOBUFS) and misreport it as a test failure.
+const MAX_BUFFER = 16 * 1024 * 1024;
+
 // Direct invocation of a specific node.exe — never touches global state.
-function runNode(exe, args, { cwd } = {}) {
-  const res = spawnSync(exe, args, { cwd, encoding: "utf8" });
+// inherit=true streams output live with no buffer cap (for test runs);
+// otherwise output is buffered (fine for tiny output like `node -v`).
+function runNode(exe, args, { cwd, inherit = false } = {}) {
+  const res = inherit
+    ? spawnSync(exe, args, { cwd, stdio: "inherit" })
+    : spawnSync(exe, args, { cwd, encoding: "utf8", maxBuffer: MAX_BUFFER });
   return {
     ok: !res.error && !res.signal && res.status === 0,
     status: res.status,
@@ -149,9 +157,7 @@ function testModule(module) {
   }
 
   console.log(`[run] ${cmdLine}`);
-  const t = runNode(exe, [npmCli, ...testArgs], { cwd });
-  if (t.stdout) process.stdout.write(t.stdout);
-  if (t.stderr) process.stderr.write(t.stderr);
+  const t = runNode(exe, [npmCli, ...testArgs], { cwd, inherit: true });
   if (!t.ok) console.error(`${module}: tests failed (${t.reason})`);
   return { ok: t.ok, dirName };
 }
