@@ -1,0 +1,24 @@
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.task-item.highlighted {
+  background-color: #fff3cd;
+}
+
+.status {
+  font-style: italic;
+}
+
+.empty {
+  color: #777;
+}

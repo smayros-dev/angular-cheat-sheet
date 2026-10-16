@@ -1,0 +1,20 @@
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <label for="title">Title</label>
+  <input id="title" type="text" formControlName="title" />
+
+  @if (titleRequired) {
+    <p class="error">Title is required</p>
+  }
+  @if (titleTooShort) {
+    <p class="error">Title needs at least 3 characters</p>
+  }
+
+  <label for="status">Status</label>
+  <select id="status" formControlName="status">
+    <option value="ready">Ready</option>
+    <option value="in-progress">In progress</option>
+    <option value="done">Done</option>
+  </select>
+
+  <button type="submit" [disabled]="form.invalid">Add task</button>
+</form>

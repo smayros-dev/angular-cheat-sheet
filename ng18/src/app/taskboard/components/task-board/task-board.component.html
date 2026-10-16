@@ -1,0 +1,17 @@
+<h2>Task Board</h2>
+
+@let loggedIn = session.isLoggedIn();
+
+@defer (on viewport) {
+  @if (loggedIn) {
+    <nav class="admin-nav">
+      <a routerLink="/admin">Admin</a>
+    </nav>
+  }
+} @placeholder {
+  <div class="admin-nav-placeholder" aria-hidden="true"></div>
+}
+
+<tb-task-form (taskAdded)="addTask($event)"></tb-task-form>
+
+<tb-task-list [tasks]="tasks()"></tb-task-list>
