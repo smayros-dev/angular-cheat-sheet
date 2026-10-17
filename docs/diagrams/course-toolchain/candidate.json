@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Angular Versions Course — Toolchain",
+    "output": "docs/diagrams/course-toolchain/course-toolchain.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/smayros-dev/angular-cheat-sheet.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "d125f11e99354e46e2ddd783588f2c4228d590cc"
+    }
+  },
+  "components": [
+    { "id": "learner", "type": "external", "label": "Learner", "sublabel": "terminal + editor", "icon": "person", "pos": [40, 220], "size": [150, 64] },
+    { "id": "lessons", "type": "database", "label": "lessons/*.md", "sublabel": "7 lessons, source of truth", "pos": [340, 60], "size": [160, 64],
+      "sources": [{ "path": "tools/build-lessons.mjs", "line": 34, "end_line": 41, "label": "7 lesson files" }] },
+    { "id": "bundler", "type": "backend", "label": "build-lessons.mjs", "sublabel": "validates code links", "pos": [640, 60], "size": [160, 64],
+      "sources": [{ "path": "tools/build-lessons.mjs", "line": 13, "end_line": 32, "label": "LESSON_CODE" }, { "path": "tools/build-lessons.mjs", "line": 43, "end_line": 67 }] },
+    { "id": "bundle", "type": "database", "label": "lessons-data.js", "sublabel": "window.LESSONS_DATA", "pos": [940, 60], "size": [160, 64],
+      "sources": [{ "path": "tools/build-lessons.mjs", "line": 69, "end_line": 74, "label": "writes bundle" }] },
+    { "id": "runner", "type": "backend", "label": "tools/run.mjs", "sublabel": "test <ngNN|all> [--strict]", "pos": [340, 220], "size": [160, 64],
+      "sources": [{ "path": "tools/run.mjs", "line": 144, "end_line": 187, "label": "testModule" }, { "path": "tools/run.mjs", "line": 34, "end_line": 36, "label": "node per workspace" }] },
+    { "id": "nvm", "type": "cloud", "label": "nvm Node installs", "sublabel": "16 / 18 / 20 (no global switch)", "pos": [330, 380], "size": [180, 64],
+      "sources": [{ "path": "tools/run.mjs", "line": 17, "end_line": 32, "label": "nvm layouts" }, { "path": "tools/run.mjs", "line": 77, "end_line": 101, "label": "resolveNode" }] },
+    { "id": "workspaces", "type": "frontend", "label": "ng14 · ng16 · ng18", "sublabel": "taskboard/ + exercises/", "pos": [640, 220], "size": [160, 64],
+      "sources": [{ "path": "ng16/src/app/taskboard/task.routes.ts", "line": 15, "end_line": 19, "label": "reference app" }, { "path": "ng16/src/app/exercises/services/task-store.service.ts", "line": 1, "label": "exercise stub" }] },
+    { "id": "karma", "type": "external", "label": "Karma + Jasmine", "sublabel": "ChromeHeadless / Edge", "pos": [940, 220], "size": [160, 64],
+      "sources": [{ "path": "ng16/karma.conf.js", "line": 4, "end_line": 16, "label": "browser fallback" }] }
+  ],
+  "connections": [
+    { "id": "learner-reads", "from": "learner", "to": "lessons", "label": "reads" },
+    { "id": "lessons-bundled", "from": "lessons", "to": "bundler", "label": "read + normalise" },
+    { "id": "bundle-written", "from": "bundler", "to": "bundle", "label": "writes" },
+    { "id": "learner-runs", "from": "learner", "to": "runner", "label": "run.mjs test", "variant": "emphasis" },
+    { "id": "runner-node", "from": "runner", "to": "nvm", "label": "resolves node", "fromSide": "bottom", "toSide": "top" },
+    { "id": "runner-npm", "from": "runner", "to": "workspaces", "label": "npm test", "variant": "emphasis" },
+    { "id": "workspaces-karma", "from": "workspaces", "to": "karma", "label": "ng test", "variant": "emphasis" },
+    { "id": "learner-edits", "from": "learner", "to": "workspaces", "label": "implements stubs", "variant": "dashed", "fromSide": "bottom", "toSide": "bottom", "via": [[115, 490], [720, 490]] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Lessons", "items": ["Edit lessons/*.md, then run node tools/build-lessons.mjs", "Bundle is deterministic: BOM and CRLF are normalised", "Every LESSON_CODE path must exist or the build fails"] },
+    { "dot": "emerald", "title": "Tests", "items": ["ng14 → Node 16, ng16 → Node 18, ng18 → Node 20", "Node is resolved per workspace; the global version never changes", "test all keeps going on failure; --strict stops at the first"] },
+    { "dot": "amber", "title": "Scoreboard", "items": ["taskboard/ specs are green on every branch", "exercises/ specs stay red until you implement the stubs"] }
+  ]
+}
