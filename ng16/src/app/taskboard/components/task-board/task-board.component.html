@@ -1,0 +1,9 @@
+<h2>Task Board</h2>
+
+<nav *ngIf="session.isLoggedIn()" class="admin-nav">
+  <a routerLink="/admin">Admin</a>
+</nav>
+
+<tb-task-form (taskAdded)="addTask($event)"></tb-task-form>
+
+<tb-task-list [tasks]="tasks()"></tb-task-list>
