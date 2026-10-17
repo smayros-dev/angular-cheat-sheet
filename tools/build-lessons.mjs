@@ -43,7 +43,11 @@ if (files.length !== 7) {
 const data = {};
 for (const file of files) {
   const slug = file.replace(/\.md$/, "");
-  const md = readFileSync(join(lessonsDir, file), "utf8");
+  // Strip a BOM and CRLF so the bundle is identical whatever the checkout's
+  // line endings (core.autocrlf on Windows) or the editor that saved it.
+  const md = readFileSync(join(lessonsDir, file), "utf8")
+    .replace(/^﻿/, "")
+    .replace(/\r\n?/g, "\n");
   if (!md.startsWith("# ")) {
     console.error(`${file} does not start with an "# " heading`);
     process.exit(1);
