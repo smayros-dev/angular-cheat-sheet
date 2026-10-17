@@ -1,16 +1,35 @@
 // Cross-workspace test orchestrator for the Angular versions course.
 // Usage: node tools/run.mjs test <ng14|ng16|ng18|ng20|ng22|all> [--strict] [--dry-run]
 // Each workspace needs a specific Node major. Instead of `nvm use` (unreliable
-// on Windows and a global mutation), the required version's node.exe is
-// resolved under %APPDATA%\nvm\v<major>.* and npm is run through it directly —
-// the global Node version never changes.
+// on Windows and a global mutation), the required version's node binary is
+// resolved from the nvm install tree (nvm-windows or nvm-sh) and npm is run
+// through it directly — the global Node version never changes.
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { join, dirname, basename } from "node:path";
+import { homedir } from "node:os";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const nvmRoot = process.env.APPDATA ? join(process.env.APPDATA, "nvm") : null;
+
+// Where each nvm flavour keeps its versions, and the node/npm paths inside
+// one version directory.
+const NVM_LAYOUTS = [
+  {
+    // nvm-windows: NVM_HOME (default %APPDATA%\nvm)\v18.20.8\node.exe
+    root:
+      process.env.NVM_HOME ||
+      (process.env.APPDATA ? join(process.env.APPDATA, "nvm") : null),
+    exe: (dir) => join(dir, "node.exe"),
+    npmCli: (dir) => join(dir, "node_modules", "npm", "bin", "npm-cli.js"),
+  },
+  {
+    // nvm-sh: $NVM_DIR (default ~/.nvm)/versions/node/v18.20.8/bin/node
+    root: join(process.env.NVM_DIR || join(homedir(), ".nvm"), "versions", "node"),
+    exe: (dir) => join(dir, "bin", "node"),
+    npmCli: (dir) => join(dir, "lib", "node_modules", "npm", "bin", "npm-cli.js"),
+  },
+];
 
 const NODE_FOR = { ng14: 16, ng16: 18, ng18: 20, ng20: 22, ng22: 24 };
 // ng14-ng18 (node 16-20) use the old karma runner: needs ChromeHeadless.
@@ -52,15 +71,36 @@ function compareVersionsDesc(a, b) {
   return 0;
 }
 
-// Highest v<major>.* directory under the nvm root (e.g. major 18 -> v18.20.8).
-function resolveNodeDir(major) {
-  if (!nvmRoot || !existsSync(nvmRoot)) return null;
+// Highest installed v<major>.* (e.g. major 18 -> v18.20.8) across the nvm
+// layouts; falls back to the running node when it already is that major.
+// Returns { exe, npmCli, label } or null.
+function resolveNode(major) {
   const re = new RegExp(`^v${major}\\.\\d+`);
-  const names = readdirSync(nvmRoot, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && re.test(e.name))
-    .map((e) => e.name)
-    .sort(compareVersionsDesc);
-  return names.length ? join(nvmRoot, names[0]) : null;
+  for (const layout of NVM_LAYOUTS) {
+    if (!layout.root || !existsSync(layout.root)) continue;
+    const names = readdirSync(layout.root, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && re.test(e.name))
+      .map((e) => e.name)
+      .sort(compareVersionsDesc);
+    for (const name of names) {
+      const dir = join(layout.root, name);
+      const node = { exe: layout.exe(dir), npmCli: layout.npmCli(dir), label: name };
+      if (existsSync(node.exe) && existsSync(node.npmCli)) return node;
+    }
+  }
+  if (process.versions.node.split(".")[0] === String(major)) {
+    const binDir = dirname(process.execPath);
+    const npmCli = [
+      join(binDir, "node_modules", "npm", "bin", "npm-cli.js"),
+      join(binDir, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js"),
+    ].find((p) => existsSync(p));
+    if (npmCli) return { exe: process.execPath, npmCli, label: `v${process.versions.node} (current)` };
+  }
+  return null;
+}
+
+function searchedRoots() {
+  return NVM_LAYOUTS.map((l) => l.root).filter(Boolean).join(", ");
 }
 
 // 16 MiB for buffered spawns — well above the 1 MiB default that can SIGTERM
@@ -109,57 +149,41 @@ function testModule(module) {
 
   console.log(`\n=== ${module} (node ${major}) ===`);
 
-  const dir = resolveNodeDir(major);
-  const dirName = dir ? basename(dir) : null;
-
-  if (!dir) {
-    const where = nvmRoot || "(APPDATA not set)";
-    const msg = `no node ${major} install under ${where} — run: nvm install ${major}`;
-    if (dryRun) {
-      console.log(`[dry-run] ${module}: would fail — ${msg}`);
-      return { ok: true, dirName };
-    }
+  // Preflight failures are reported the same way in a dry run, so its summary
+  // predicts the real run instead of claiming a pass.
+  const fail = (msg, nodeLabel = null) => {
     console.error(`${module}: ${msg}`);
-    return { ok: false, dirName };
+    return { ok: false, nodeLabel };
+  };
+
+  if (!existsSync(cwd)) return fail(`workspace missing: ${cwd}`);
+  if (!existsSync(join(cwd, "node_modules"))) {
+    return fail(`dependencies not installed — run: npm ci (in ${module}, with node ${major})`);
   }
 
-  const exe = join(dir, "node.exe");
-  const npmCli = join(dir, "node_modules", "npm", "bin", "npm-cli.js");
-  const cmdLine = `${exe} ${npmCli} ${testArgs.join(" ")}`;
+  const node = resolveNode(major);
+  if (!node) return fail(`no node ${major} found under ${searchedRoots()} — run: nvm install ${major}`);
+
+  const cmdLine = `${node.exe} ${node.npmCli} ${testArgs.join(" ")}`;
 
   if (dryRun) {
-    plan(`${exe} -v`);
+    plan(`${node.exe} -v`);
     plan(cmdLine, cwd);
-    return { ok: true, dirName };
-  }
-
-  if (!existsSync(exe)) {
-    console.error(`${module}: node.exe not found at ${exe} — reinstall with: nvm install ${major}`);
-    return { ok: false, dirName };
+    return { ok: true, nodeLabel: node.label };
   }
 
   // Verify the resolved binary really is the required major.
-  const v = runNode(exe, ["-v"]);
+  const v = runNode(node.exe, ["-v"]);
   const reported = v.stdout.trim();
   if (!new RegExp(`^v${major}\\.`).test(reported)) {
-    console.error(`${module}: ${exe} -v → ${reported || v.reason} — expected v${major}.x`);
-    return { ok: false, dirName };
+    return fail(`${node.exe} -v → ${reported || v.reason} — expected v${major}.x`, node.label);
   }
-  console.log(`${module}: ${exe} -v → ${reported}`);
-
-  if (!existsSync(npmCli)) {
-    console.error(`${module}: npm not found at ${npmCli}`);
-    return { ok: false, dirName };
-  }
-  if (!existsSync(cwd)) {
-    console.error(`${module}: workspace missing: ${cwd}`);
-    return { ok: false, dirName };
-  }
+  console.log(`${module}: ${node.exe} -v → ${reported}`);
 
   console.log(`[run] ${cmdLine}`);
-  const t = runNode(exe, [npmCli, ...testArgs], { cwd, inherit: true });
+  const t = runNode(node.exe, [node.npmCli, ...testArgs], { cwd, inherit: true });
   if (!t.ok) console.error(`${module}: tests failed (${t.reason})`);
-  return { ok: t.ok, dirName };
+  return { ok: t.ok, nodeLabel: node.label };
 }
 
 const results = {};
@@ -174,12 +198,12 @@ for (const module of modules) {
 }
 
 const summary = modules
-  .map((m) => `${m}=${m in results ? (results[m].ok ? "pass" : "fail") : "skipped"}`)
+  .map((m) => `${m}=${m in results ? (results[m].ok ? (dryRun ? "ready" : "pass") : "fail") : "skipped"}`)
   .join(" ");
 console.log(`\nsummary: ${summary}`);
 for (const m of modules) {
-  if (m in results && results[m].dirName) {
-    console.log(`${m}: node: ${results[m].dirName} (no global switch)`);
+  if (m in results && results[m].nodeLabel) {
+    console.log(`${m}: node: ${results[m].nodeLabel} (no global switch)`);
   }
 }
 if (dryRun) console.log("dry-run: no commands executed");
