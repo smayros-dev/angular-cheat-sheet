@@ -75,6 +75,15 @@ describe('TaskFormComponent', () => {
     expect(submitButton()?.disabled).toBe(true);
   });
 
+  it('keeps the length error hidden while typing before the field is touched', () => {
+    expect(titleInput()).toBeTruthy();
+
+    setText('ab');
+
+    expect(fixture.nativeElement.textContent).not.toContain('Title needs at least 3 characters');
+    expect(submitButton()?.disabled).toBe(true);
+  });
+
   it('hides the errors and enables submit for a valid title', () => {
     touchTitle();
     setText('Ship it');

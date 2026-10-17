@@ -21,8 +21,9 @@ describe('TaskBadgeComponent', () => {
     component.tone = 'warn';
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('span.badge')).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain('Ship');
+    const badge: HTMLElement | null = fixture.nativeElement.querySelector('span.badge');
+    expect(badge).toBeTruthy();
+    expect(badge?.textContent).toContain('Ship');
   });
 
   it('applies the badge-{tone} class for each tone', () => {
@@ -33,8 +34,9 @@ describe('TaskBadgeComponent', () => {
       component.tone = tone;
       fixture.detectChanges();
 
-      expect(fixture.nativeElement.querySelector(`span.badge.badge-${tone}`)).toBeTruthy();
-      expect(fixture.nativeElement.textContent).toContain('Ship');
+      const badge: HTMLElement | null = fixture.nativeElement.querySelector(`span.badge.badge-${tone}`);
+      expect(badge).toBeTruthy();
+      expect(badge?.textContent).toContain('Ship');
     }
   });
 });
