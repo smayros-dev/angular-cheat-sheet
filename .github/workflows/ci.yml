@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main, course-build, solutions]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tooling:
+    name: Tooling & lessons
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Tools parse
+        run: |
+          node --check tools/run.mjs
+          node --check tools/build-lessons.mjs
+      - name: lessons-data.js is up to date with lessons/
+        run: |
+          node tools/build-lessons.mjs
+          git diff --exit-code lessons-data.js \
+            || { echo "::error::lessons-data.js is stale — run node tools/build-lessons.mjs and commit it"; exit 1; }
+
+  workspace:
+    name: ${{ matrix.workspace }} (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { workspace: ng14, node: 16, exercises: false }
+          - { workspace: ng16, node: 18, exercises: true }
+          - { workspace: ng18, node: 20, exercises: true }
+    defaults:
+      run:
+        working-directory: ${{ matrix.workspace }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: ${{ matrix.workspace }}/package-lock.json
+      - run: npm ci
+
+      - name: Reference app specs (must pass)
+        run: >-
+          npx ng test --watch=false --browsers=ChromeHeadlessCI
+          --include='src/app/app.component.spec.ts'
+          --include='src/app/taskboard/**/*.spec.ts'
+
+      # Exercise specs are red by design until the stubs are implemented, so
+      # they only gate the solutions branch (and PRs into it).
+      - name: Exercise scoreboard
+        if: matrix.exercises
+        continue-on-error: ${{ github.ref_name != 'solutions' && github.base_ref != 'solutions' }}
+        run: >-
+          npx ng test --watch=false --browsers=ChromeHeadlessCI
+          --include='src/app/exercises/**/*.spec.ts'
+
+      - name: Production build
+        run: npx ng build

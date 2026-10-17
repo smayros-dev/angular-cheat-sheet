@@ -1,5 +1,8 @@
 # Angular Versions Course — 14 → 16 → 18 → 20 → 22
 
+[![CI](https://github.com/smayros-dev/angular-cheat-sheet/actions/workflows/ci.yml/badge.svg)](https://github.com/smayros-dev/angular-cheat-sheet/actions/workflows/ci.yml)
+[![Deploy](https://github.com/smayros-dev/angular-cheat-sheet/actions/workflows/deploy.yml/badge.svg)](https://github.com/smayros-dev/angular-cheat-sheet/actions/workflows/deploy.yml)
+
 A self-paced course that takes a classic Angular 14 NgModule app and modernizes
 it one major at a time, up to the signal era. Each version lives in its own,
 fully independent Angular workspace containing:
@@ -145,6 +148,26 @@ angular-cheat-sheet/
     ├── diagrams/         # archify architecture diagrams (offline HTML)
     └── superpowers/      # design spec + implementation plan
 ```
+
+## CI/CD
+
+GitHub Actions workflows live in `.github/workflows/`:
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| **CI** (`ci.yml`) | every PR, plus pushes to `main` / `course-build` / `solutions` | Checks that `lessons-data.js` matches `lessons/`. For each workspace, on its own Node version, it runs the reference app specs (these **must pass**), the exercise scoreboard, and a production build. |
+| **Deploy** (`deploy.yml`) | push to `main`, or manual | Builds all three apps and publishes them to GitHub Pages, together with a landing page and the diagrams |
+
+- The exercise scoreboard is informational on every branch except
+  `solutions` (and PRs into it), where it must be green.
+- CI runs Karma with the `ChromeHeadlessCI` launcher (`--no-sandbox`)
+  defined in each `karma.conf.js`. Hosted Ubuntu runners can't use
+  Chrome's sandbox.
+- **One-time setup for Pages:** Settings → Pages → Source: **GitHub
+  Actions**. The site is then served at
+  `https://smayros-dev.github.io/angular-cheat-sheet/`, with one app per
+  workspace (`/ng14/`, `/ng16/`, `/ng18/`). Reloading a deep link such as
+  `/ng16/login` falls back to that app's start page.
 
 ## Editing lessons
 

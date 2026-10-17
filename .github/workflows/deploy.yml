@@ -1,0 +1,87 @@
+name: Deploy to GitHub Pages
+
+# Publishes the three TaskBoard apps and the docs diagrams:
+#   https://<owner>.github.io/<repo>/            landing page
+#   https://<owner>.github.io/<repo>/ng16/       one app per workspace
+#   https://<owner>.github.io/<repo>/docs/diagrams/…
+# Requires Settings → Pages → Source: "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.workspace }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { workspace: ng14, node: 16 }
+          - { workspace: ng16, node: 18 }
+          - { workspace: ng18, node: 20 }
+    defaults:
+      run:
+        working-directory: ${{ matrix.workspace }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: ${{ matrix.workspace }}/package-lock.json
+      - run: npm ci
+      - run: npx ng build --base-href "/${{ github.event.repository.name }}/${{ matrix.workspace }}/"
+      - name: Locate build output
+        id: out
+        run: |
+          out="dist/${{ matrix.workspace }}"
+          # The application builder (ng18+) nests the files under browser/.
+          if [ -d "$out/browser" ]; then out="$out/browser"; fi
+          echo "path=${{ matrix.workspace }}/$out" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.workspace }}
+          path: ${{ steps.out.outputs.path }}
+
+  site:
+    name: Assemble site
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ng*
+          path: _site
+      - name: Add landing page and diagrams
+        run: |
+          cp .github/pages/index.html .github/pages/404.html _site/
+          mkdir -p _site/docs
+          cp -r docs/diagrams _site/docs/
+          find _site/docs -name candidate.json -delete
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy
+    needs: site
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
