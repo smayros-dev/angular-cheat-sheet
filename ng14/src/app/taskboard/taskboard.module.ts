@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 
 import { AdminComponent } from './admin/admin.component';
 import { TaskBoardComponent } from './components/task-board/task-board.component';
@@ -20,7 +21,7 @@ import { StatusPipe } from './pipes/status.pipe';
     StatusPipe,
     HighlightDirective,
   ],
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   exports: [TaskBoardComponent, StatusPipe, HighlightDirective],
 })
 export class TaskboardModule {}

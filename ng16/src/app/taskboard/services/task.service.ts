@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-import { Task, TaskStatus } from '../models/task.model';
+import { Task } from '../models/task.model';
 
 @Injectable({ providedIn: 'root' })
 export class TaskService {
@@ -18,7 +18,7 @@ export class TaskService {
 
   private nextId = 4;
 
-  add(task: { title: string; status: TaskStatus }): Task {
+  add(task: Omit<Task, 'id'>): Task {
     const created: Task = { id: this.nextId++, ...task };
     this.taskState.update(tasks => [...tasks, created]);
     return created;
