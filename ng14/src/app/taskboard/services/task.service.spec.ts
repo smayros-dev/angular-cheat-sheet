@@ -34,6 +34,14 @@ describe('TaskService', () => {
     expect(service.tasks.length).toBe(3);
   });
 
+  it('derives the done count from the task list', () => {
+    expect(service.doneCount).toBe(1);
+
+    service.add({ title: 'Review the PR', status: 'done' });
+
+    expect(service.doneCount).toBe(2);
+  });
+
   it('clears only the tasks marked done', () => {
     service.clearDone();
 

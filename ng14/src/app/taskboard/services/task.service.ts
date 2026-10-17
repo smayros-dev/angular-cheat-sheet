@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import { Task, TaskStatus } from '../models/task.model';
+import { Task } from '../models/task.model';
 
 @Injectable({ providedIn: 'root' })
 export class TaskService {
@@ -10,9 +10,13 @@ export class TaskService {
     { id: 3, title: 'Write the docs', status: 'ready' },
   ];
 
+  get doneCount(): number {
+    return this.tasks.filter(task => task.status === 'done').length;
+  }
+
   private nextId = 4;
 
-  add(task: { title: string; status: TaskStatus }): Task {
+  add(task: Omit<Task, 'id'>): Task {
     const created: Task = { id: this.nextId++, ...task };
     this.tasks.push(created);
     return created;

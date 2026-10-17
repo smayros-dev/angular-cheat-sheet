@@ -2,9 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, provideRouter } from '@angular/router';
 
 import { SessionService } from './services/session.service';
-import { canActivateTasks, taskRoutes } from './task.routes';
+import { canActivateAdmin, taskRoutes } from './task.routes';
 
-describe('canActivateTasks', () => {
+describe('canActivateAdmin', () => {
   const route = {} as ActivatedRouteSnapshot;
   const state = {} as RouterStateSnapshot;
   let session: SessionService;
@@ -20,7 +20,7 @@ describe('canActivateTasks', () => {
   });
 
   it('redirects logged-out users to the login UrlTree', () => {
-    const result = TestBed.runInInjectionContext(() => canActivateTasks(route, state));
+    const result = TestBed.runInInjectionContext(() => canActivateAdmin(route, state));
 
     expect(result).toEqual(router.parseUrl('/login'));
   });
@@ -28,7 +28,7 @@ describe('canActivateTasks', () => {
   it('allows activation when logged in', () => {
     session.login();
 
-    const result = TestBed.runInInjectionContext(() => canActivateTasks(route, state));
+    const result = TestBed.runInInjectionContext(() => canActivateAdmin(route, state));
 
     expect(result).toBeTrue();
   });

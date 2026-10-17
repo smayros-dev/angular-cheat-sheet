@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Angular Versions Course</title>
+  <style>
+    :root { --bg: #f8fafc; --fg: #0f172a; --muted: #475569; --card: #ffffff; --line: #e2e8f0; --accent: #c3002f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b1120; --fg: #e2e8f0; --muted: #94a3b8; --card: #111827; --line: #1f2937; --accent: #ff5277; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 48px 16px; }
+    h1 { margin: 0 0 4px; font-size: 1.8rem; }
+    p.lead { margin: 0 0 32px; color: var(--muted); }
+    h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 32px 0 12px; }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    a.card { display: block; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: inherit; text-decoration: none; }
+    a.card:hover, a.card:focus-visible { border-color: var(--accent); }
+    a.card strong { display: block; color: var(--accent); }
+    a.card span { color: var(--muted); font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Angular Versions Course</h1>
+    <p class="lead">The same TaskBoard app, written idiomatically for each Angular major — 14 → 16 → 18.</p>
+
+    <h2>Live TaskBoard apps</h2>
+    <div class="grid">
+      <a class="card" href="ng14/"><strong>Angular 14</strong><span>NgModules, class guard, *ngIf / *ngFor</span></a>
+      <a class="card" href="ng16/"><strong>Angular 16</strong><span>Standalone, inject(), signals preview</span></a>
+      <a class="card" href="ng18/"><strong>Angular 18</strong><span>@if / @for / @let / @defer</span></a>
+    </div>
+
+    <h2>Documentation</h2>
+    <div class="grid">
+      <a class="card" href="docs/diagrams/course-toolchain/course-toolchain.html"><strong>Course toolchain</strong><span>Lessons, workspaces and the test orchestrator</span></a>
+      <a class="card" href="docs/diagrams/taskboard-app/taskboard-app.html"><strong>TaskBoard app</strong><span>Routes, guard, components and services</span></a>
+      <a class="card" href="https://github.com/smayros-dev/angular-cheat-sheet#readme"><strong>README</strong><span>Setup, exercises and commands</span></a>
+    </div>
+  </main>
+</body>
+</html>

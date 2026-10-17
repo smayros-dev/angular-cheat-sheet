@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { RouterTestingModule } from '@angular/router/testing';
 
 import { TaskboardModule } from '../../taskboard.module';
 import { TaskBoardComponent } from './task-board.component';
@@ -8,7 +9,7 @@ describe('TaskBoardComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TaskboardModule],
+      imports: [TaskboardModule, RouterTestingModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TaskBoardComponent);
@@ -26,6 +27,12 @@ describe('TaskBoardComponent', () => {
     expect(items[1].textContent).toContain('In progress');
     expect(items[2].textContent).toContain('Write the docs');
     expect(items[2].textContent).toContain('Ready');
+  });
+
+  it('summarises how many tasks are done', () => {
+    const element: HTMLElement = fixture.nativeElement;
+
+    expect(element.querySelector('p.summary')?.textContent).toContain('1 of 3 done');
   });
 
   it('does not render the empty state when tasks are seeded', () => {

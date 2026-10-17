@@ -6,7 +6,7 @@ import { TaskBoardComponent } from './components/task-board/task-board.component
 import { LoginComponent } from './login/login.component';
 import { SessionService } from './services/session.service';
 
-export const canActivateTasks: CanActivateFn = () => {
+export const canActivateAdmin: CanActivateFn = () => {
   const session = inject(SessionService);
   const router = inject(Router);
   return session.isLoggedIn() ? true : router.parseUrl('/login');
@@ -15,5 +15,5 @@ export const canActivateTasks: CanActivateFn = () => {
 export const taskRoutes: Routes = [
   { path: '', component: TaskBoardComponent },
   { path: 'login', component: LoginComponent },
-  { path: 'admin', component: AdminComponent, canActivate: [canActivateTasks] },
+  { path: 'admin', component: AdminComponent, canActivate: [canActivateAdmin] },
 ];

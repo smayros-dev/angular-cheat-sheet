@@ -30,6 +30,12 @@ describe('TaskBoardComponent', () => {
     expect(items[2].textContent).toContain('Ready');
   });
 
+  it('summarises how many tasks are done', () => {
+    const element: HTMLElement = fixture.nativeElement;
+
+    expect(element.querySelector('p.summary')?.textContent).toContain('1 of 3 done');
+  });
+
   it('does not render the empty state when tasks are seeded', () => {
     const element: HTMLElement = fixture.nativeElement;
 
