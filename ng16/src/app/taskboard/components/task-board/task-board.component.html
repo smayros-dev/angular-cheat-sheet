@@ -1,4 +1,5 @@
 <h2>Task Board</h2>
+<p class="summary">{{ doneCount() }} of {{ tasks().length }} done</p>
 
 <nav *ngIf="session.isLoggedIn()" class="admin-nav">
   <a routerLink="/admin">Admin</a>

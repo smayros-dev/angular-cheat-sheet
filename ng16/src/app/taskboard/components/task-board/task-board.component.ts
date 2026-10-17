@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
@@ -19,7 +19,8 @@ export class TaskBoardComponent {
   private readonly taskService = inject(TaskService);
   protected readonly session = inject(SessionService);
 
-  readonly tasks = computed(() => this.taskService.tasks());
+  readonly tasks = this.taskService.tasks;
+  readonly doneCount = this.taskService.doneCount;
 
   addTask(task: Omit<Task, 'id'>): void {
     this.taskService.add(task);

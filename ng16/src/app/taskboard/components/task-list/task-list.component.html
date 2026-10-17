@@ -1,5 +1,5 @@
 <ul *ngIf="tasks.length > 0; else empty" class="task-list">
-  <li *ngFor="let task of tasks; trackBy: trackByTask" tbHighlight class="task-item">
+  <li *ngFor="let task of tasks; trackBy: trackByTask" tbHighlight tabindex="0" class="task-item">
     <span class="title">{{ task.title }}</span>
     <span class="status">{{ task.status | status }}</span>
   </li>
