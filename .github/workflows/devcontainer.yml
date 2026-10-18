@@ -1,0 +1,34 @@
+name: Dev container
+
+# Builds .devcontainer exactly as GitHub Codespaces does and smoke-tests it,
+# so "Open in Codespaces" keeps working.
+
+on:
+  pull_request:
+    paths:
+      - ".devcontainer/**"
+      - "tools/**"
+      - "ng*/package.json"
+      - "ng*/package-lock.json"
+      - ".github/workflows/devcontainer.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".devcontainer/**"
+      - "ng*/package.json"
+      - "ng*/package-lock.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: bash .devcontainer/smoke.sh

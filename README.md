@@ -3,6 +3,10 @@
 [![CI](https://github.com/smayros-dev/angular-cheat-sheet/actions/workflows/ci.yml/badge.svg)](https://github.com/smayros-dev/angular-cheat-sheet/actions/workflows/ci.yml)
 [![Deploy](https://github.com/smayros-dev/angular-cheat-sheet/actions/workflows/deploy.yml/badge.svg)](https://github.com/smayros-dev/angular-cheat-sheet/actions/workflows/deploy.yml)
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/smayros-dev/angular-cheat-sheet?quickstart=1)
+
+**Learn in the browser:** open the repo in GitHub Codespaces. Node 16/18/20, Chrome and every workspace come preinstalled, so you can edit the exercises and run their tests without installing anything. See [docs/apprendre-dans-le-navigateur.md](docs/apprendre-dans-le-navigateur.md).
+
 A self-paced course that takes a classic Angular 14 NgModule app and modernizes
 it one major at a time, up to the signal era. Each version lives in its own,
 fully independent Angular workspace containing:

@@ -1,0 +1,24 @@
+{
+  // Browser-based environment (GitHub Codespaces / VS Code Dev Containers):
+  // Node 16/18/20 via nvm, Chrome for Karma, every workspace installed.
+  "name": "Angular Versions Course",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "hostRequirements": { "cpus": 4, "memory": "8gb" },
+  "containerEnv": {
+    "NG_CLI_ANALYTICS": "false",
+    "RUN_KARMA_BROWSER": "ChromeHeadlessCI"
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "forwardPorts": [4200],
+  "portsAttributes": {
+    "4200": { "label": "TaskBoard (ng serve)", "onAutoForward": "openPreview" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["angular.ng-template"]
+    },
+    "codespaces": {
+      "openFiles": ["docs/apprendre-dans-le-navigateur.md"]
+    }
+  }
+}

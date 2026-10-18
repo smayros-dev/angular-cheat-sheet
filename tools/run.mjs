@@ -145,7 +145,10 @@ function testModule(module) {
   const major = NODE_FOR[module];
   const cwd = join(root, module);
   const testArgs = ["test", "--", "--watch=false"];
-  if (HEADLESS_MODULES.has(module)) testArgs.push("--browsers=ChromeHeadless");
+  // RUN_KARMA_BROWSER lets containers pick the no-sandbox ChromeHeadlessCI.
+  if (HEADLESS_MODULES.has(module)) {
+    testArgs.push(`--browsers=${process.env.RUN_KARMA_BROWSER || "ChromeHeadless"}`);
+  }
 
   console.log(`\n=== ${module} (node ${major}) ===`);
 
