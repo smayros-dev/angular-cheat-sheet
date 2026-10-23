@@ -19,6 +19,8 @@ fully independent Angular workspace containing:
 
 ## Documentation
 
+> 🇫🇷 **Guide en français :** [guide d'utilisation](docs/guide-utilisation.md) (installation, exercices, tests, CI/CD, dépannage) · [comment améliorer le projet](docs/ameliorations.md) (feuille de route priorisée).
+
 | Diagram | What it shows |
 |---|---|
 | [Course toolchain](docs/diagrams/course-toolchain/course-toolchain.html) | Lessons → bundler, workspaces, and how `tools/run.mjs` runs each suite under its own Node |
